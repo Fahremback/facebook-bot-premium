@@ -146,7 +146,10 @@ class FacebookBot:
             # Optionally, we might need to click on the 'Grupos' tab if it exists
             group_tab = await self.page.query_selector("text=/Grupos/i")
             if group_tab and await group_tab.is_visible():
-                await group_tab.click(force=True)
+                try:
+                    await group_tab.click(force=True, timeout=3000)
+                except Exception as e:
+                    self.logger(f"[SEARCH] Aviso ao tentar mudar para a aba Grupos: Ignorado (Timeout).")
                 await asyncio.sleep(3)
         
         # Find all elements that contain "participar" (case insensitive)

@@ -1,6 +1,7 @@
 import random
 import time
 import os
+import asyncio
 from PIL import Image
 
 def random_sleep(min_sec, max_sec):
@@ -24,10 +25,14 @@ async def human_type(page, selector, text):
     except Exception as e:
         print(f"[ERROR] Falha na digitação: {e}")
 
-async def human_click(page, selector):
+async def human_click(page, selector_or_element):
     """Simulates a human click with a small random movement before clicking."""
     try:
-        element = await page.wait_for_selector(selector, timeout=5000)
+        if isinstance(selector_or_element, str):
+            element = await page.wait_for_selector(selector_or_element, timeout=5000)
+        else:
+            element = selector_or_element
+            
         box = await element.bounding_box()
         if box:
             # Move to a random point within the element
@@ -36,6 +41,8 @@ async def human_click(page, selector):
             await page.mouse.move(x, y, steps=10)
             await asyncio.sleep(random.uniform(0.1, 0.5))
             await page.mouse.click(x, y)
+        else:
+            await element.click(force=True, timeout=5000)
     except Exception as e:
         print(f"[ERROR] Falha no clique humano: {e}")
 
