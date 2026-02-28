@@ -3,7 +3,7 @@ import os
 import random
 from playwright.async_api import async_playwright
 import config
-from utils import human_type, random_sleep, scramble_image, clean_temp_images, human_click
+from utils import human_type, random_sleep, scramble_image, clean_temp_images, human_click, simulate_error
 
 class FacebookBot:
     def __init__(self, settings=None, logger=None):
@@ -190,6 +190,11 @@ class FacebookBot:
                     
         except Exception as e:
             self.logger(f"[ERROR] {e}")
+            if "closed" in str(e).lower() or "not defined" in str(e).lower():
+                self.is_running = False
+                self.logger("[SISTEMA] Erro crítico ou navegador fechado. Parando execução para evitar spam.")
+            else:
+                await asyncio.sleep(5) # Prevent infinite fast loops on generic errors
 
 if __name__ == "__main__":
     print("Este arquivo deve ser rodado através do gui.py")
