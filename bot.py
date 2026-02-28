@@ -127,12 +127,18 @@ class FacebookBot:
         # Fallback: If Facebook forces the modern React overlay, it traps us on an empty search page
         search_input = await self.page.query_selector("input[type='search'], input[placeholder*='Pesquisar']")
         if search_input and await search_input.is_visible():
-            self.logger("[SEARCH] Interface de busca moderna detectada. Inserindo texto manualmente...")
+            self.logger("[SEARCH] Interface de busca moderna detectada. Tentando injeção direta via script...")
             
-            # Clica forçadamente na caixa e digita diretamente pelo teclado (bypassa bloqueios de UI)
-            await search_input.click(force=True)
-            await asyncio.sleep(1)
-            await self.page.keyboard.type(keyword, delay=100)
+            # Use javascript to forcefully set value and trigger React's internal state
+            await self.page.evaluate(f'''(keyword) => {{
+                let input = document.querySelector('input[type="search"], input[placeholder*="Pesquisar"]');
+                if (input) {{
+                    input.value = keyword;
+                    input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                }}
+            }}''', keyword)
+            
             await asyncio.sleep(1)
             await self.page.keyboard.press("Enter")
             await asyncio.sleep(5) # Wait for the actual query to execute
