@@ -128,15 +128,19 @@ class FacebookBot:
         search_input = await self.page.query_selector("input[type='search'], input[placeholder*='Pesquisar']")
         if search_input and await search_input.is_visible():
             self.logger("[SEARCH] Interface de busca moderna detectada. Inserindo texto manualmente...")
-            await human_click(self.page, search_input)
-            await human_type(self.page, "input[type='search'], input[placeholder*='Pesquisar']", keyword)
+            
+            # Clica forçadamente na caixa e digita diretamente pelo teclado (bypassa bloqueios de UI)
+            await search_input.click(force=True)
+            await asyncio.sleep(1)
+            await self.page.keyboard.type(keyword, delay=100)
+            await asyncio.sleep(1)
             await self.page.keyboard.press("Enter")
             await asyncio.sleep(5) # Wait for the actual query to execute
             
             # Optionally, we might need to click on the 'Grupos' tab if it exists
             group_tab = await self.page.query_selector("text=/Grupos/i")
             if group_tab and await group_tab.is_visible():
-                await human_click(self.page, group_tab)
+                await group_tab.click(force=True)
                 await asyncio.sleep(3)
         
         # Find all elements that contain "participar" (case insensitive)
