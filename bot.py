@@ -114,8 +114,14 @@ class FacebookBot:
 
     async def search_and_join_groups(self):
         import urllib.parse
-        keyword = self.settings.get("group_keyword", "")
-        if not keyword: return
+        raw_keywords = self.settings.get("group_keyword", "")
+        if not raw_keywords: return
+        
+        # Support multiple keywords separated by semicolon
+        keywords = [k.strip() for k in raw_keywords.split(';') if k.strip()]
+        if not keywords: return
+        
+        keyword = random.choice(keywords)
         
         safe_keyword = urllib.parse.quote_plus(keyword)
         self.logger(f"[SEARCH] Procurando: {keyword}")

@@ -34,7 +34,7 @@ class BotGUI(ctk.CTk):
         self.pass_entry.pack(fill="x", padx=20, pady=5)
 
         ctk.CTkLabel(self.sidebar, text="Busca de Grupos", font=("Inter", 16, "bold")).pack(pady=10)
-        self.keyword_entry = ctk.CTkEntry(self.sidebar, placeholder_text="Ex: Marketing Digital")
+        self.keyword_entry = ctk.CTkEntry(self.sidebar, placeholder_text="Marketing; Vendas; Empregos")
         self.keyword_entry.pack(fill="x", padx=20, pady=5)
 
         ctk.CTkLabel(self.sidebar, text="Conteúdo da Postagem", font=("Inter", 16, "bold")).pack(pady=10)
