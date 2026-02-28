@@ -37,10 +37,17 @@ class FacebookBot:
             ]
         )
         
-        if self.context.pages:
-            self.page = self.context.pages[0]
-        else:
-            self.page = await self.context.new_page()
+        # Create a new page to ensure we have a fresh tab for the bot
+        self.page = await self.context.new_page()
+        await self.page.bring_to_front()
+        
+        # Clean up empty about:blank pages that Playwright might have opened
+        for p in self.context.pages:
+            if p != self.page and p.url == "about:blank":
+                try:
+                    await p.close()
+                except:
+                    pass
             
         await self.page.goto("https://mbasic.facebook.com")
         self.logger(f"[BOT] Navegador iniciado no Modo Mobile")
