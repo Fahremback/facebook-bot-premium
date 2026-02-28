@@ -33,31 +33,22 @@ class FacebookBot:
                 "--disable-blink-features=AutomationControlled",
                 "--window-size=390,844",
                 "--no-sandbox",
-                "--disable-setuid-sandbox"
+                "--disable-setuid-sandbox",
+                "--app=https://mbasic.facebook.com"
             ]
         )
         
-        # Create a new page to ensure we have a fresh tab for the bot
-        self.page = await self.context.new_page()
+        # When using --app, the first page is automatically our app target
+        self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
         await self.page.bring_to_front()
         
-        # Manually enforce mobile properties ON THE PAGE instead of the context launch
-        # This bypasses the Comet/Chromium launch crash while tricking Facebook
+        # Manually enforce mobile properties ON THE PAGE
         await self.page.set_viewport_size({"width": 390, "height": 844})
         client = await self.page.context.new_cdp_session(self.page)
         await client.send('Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
         await client.send('Emulation.setEmitTouchEventsForMouse', {'enabled': True})
         
-        # Clean up empty about:blank pages that Playwright might have opened
-        for p in self.context.pages:
-            if p != self.page and p.url == "about:blank":
-                try:
-                    await p.close()
-                except:
-                    pass
-            
-        await self.page.goto("https://mbasic.facebook.com")
-        self.logger(f"[BOT] Navegador iniciado no Modo Mobile")
+        self.logger(f"[BOT] Navegador iniciado no Modo Mobile (App Mode)")
         self.is_running = True
 
     async def login(self):
