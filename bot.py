@@ -20,18 +20,18 @@ class FacebookBot:
         iphone_13 = self.playwright.devices["iPhone 13"]
         width, height = iphone_13["viewport"]["width"], iphone_13["viewport"]["height"]
         
+        # Manual mobile emulation (Stable for Comet)
+        user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
+        
         self.context = await self.playwright.chromium.launch_persistent_context(
             user_data_dir=config.USER_DATA_DIR,
             executable_path=config.COMET_EXE_PATH,
             headless=False,
-            device_scale_factor=iphone_13["device_scale_factor"],
-            is_mobile=iphone_13["is_mobile"],
-            has_touch=iphone_13["has_touch"],
-            viewport=iphone_13["viewport"],
-            user_agent=iphone_13["user_agent"],
+            user_agent=user_agent,
+            viewport={"width": 390, "height": 844},
             args=[
                 "--disable-blink-features=AutomationControlled",
-                f"--window-size={width},{height}",
+                "--window-size=390,844",
                 "--no-sandbox",
                 "--disable-setuid-sandbox"
             ]
