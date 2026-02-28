@@ -173,7 +173,7 @@ class FacebookBot:
                     let rect = clickable.getBoundingClientRect();
                     
                     if (style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0) {
-                        clickable.scrollIntoView({block: 'center', behavior: 'instant'});
+                        clickable.scrollIntoView({block: 'center', behavior: 'smooth'});
                         return new Promise((resolve) => {
                             setTimeout(() => {
                                 // Full React-compatible mouse event sequence
@@ -187,7 +187,7 @@ class FacebookBot:
                                     }));
                                 });
                                 resolve(true);
-                            }, 800);
+                            }, 1500); // Give 1.5s for the smooth scroll to finish before clicking
                         });
                     }
                 }
