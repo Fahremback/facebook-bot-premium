@@ -48,6 +48,21 @@ class FacebookBot:
         await client.send('Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
         await client.send('Emulation.setEmitTouchEventsForMouse', {'enabled': True})
         
+        # Intercept and block redirects to m.facebook.com, forcing mbasic
+        async def handle_route(route):
+            url = route.request.url
+            if "m.facebook.com" in url and "mbasic" not in url:
+                new_url = url.replace("m.facebook.com", "mbasic.facebook.com")
+                self.logger(f"[REDE] Redirecionamento bloqueado. Forçando mbasic: {new_url}")
+                await route.continue_(url=new_url)
+            else:
+                await route.continue_()
+                
+        await self.page.route("**/*", handle_route)
+        
+        # Navigate to the initial mbasic page explicitly
+        await self.page.goto("https://mbasic.facebook.com")
+        
         self.logger(f"[BOT] Navegador iniciado no Modo Mobile (App Mode)")
         self.is_running = True
 
