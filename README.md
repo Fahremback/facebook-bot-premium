@@ -69,5 +69,6 @@ Este software foi desenvolvido exclusivamente para fins de Produtividade, Automa
 ---
 
 <p align="center">
-  Desenvolvido com ❤️ por <b>Antigravity AI</b> (Código e Stealth) e por <b>Você</b> (Engenharia Social e Idealização).
+  Desenvolvido com ❤️ com <b>Antigravity AI</b>.<br><br>
+  <i>"A Inteligência Artificial é apenas o motor; a verdadeira engenharia social, a direção e o conhecimento do mapa ainda pertencem à mente humana. Sem um piloto experiente, a máquina não tem destino."</i>
 </p>
