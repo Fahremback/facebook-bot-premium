@@ -194,13 +194,22 @@ class FacebookBot:
         if clicked_coord:
             try:
                 x, y = clicked_coord['x'], clicked_coord['y']
-                await self.page.mouse.move(x + random.uniform(-2, 2), y + random.uniform(-2, 2), steps=10)
-                await asyncio.sleep(random.uniform(0.1, 0.4))
-                # Raw physical click, no DOM target restrictions
+                self.logger(f"[SEARCH] Coordenadas adquiridas: X={int(x)} Y={int(y)}. Movendo mouse...")
+                
+                # Move slightly offset from center for realism
+                target_x = x + random.uniform(-5, 5)
+                target_y = y + random.uniform(-2, 2)
+                
+                await self.page.mouse.move(target_x, target_y, steps=15)
+                await asyncio.sleep(random.uniform(0.2, 0.6))
+                
+                # Raw physical click, no DOM target restrictions. Hold the click down longer!
                 await self.page.mouse.down()
-                await asyncio.sleep(0.05)
+                click_duration = random.uniform(0.15, 0.4) # Firm human touch/click duration
+                await asyncio.sleep(click_duration)
                 await self.page.mouse.up()
-                self.logger("[JOIN] Solicitado entrada no grupo (Clique Visual Direto).")
+                
+                self.logger(f"[JOIN] Solicitado entrada no grupo (Clique Firme de {int(click_duration*1000)}ms).")
                 await asyncio.sleep(5)
             except Exception as e:
                 self.logger(f"[ERROR] Falha no clique visual: {e}")
