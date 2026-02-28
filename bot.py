@@ -197,6 +197,10 @@ class FacebookBot:
         
         if clicked_success:
             self.logger("[JOIN] Solicitado entrada no grupo / Acesso. Simulando ansiedade humana...")
+            
+            # Chama o preenchimento de formulário caso o grupo exija aprovação por perguntas
+            await self.handle_group_questions()
+            
             # Ansiedade humana: rolar a tela rápido pra cima e pra baixo logo após clicar
             for _ in range(random.randint(2, 4)):
                 await self.page.mouse.wheel(0, random.randint(400, 900))
@@ -210,6 +214,76 @@ class FacebookBot:
             await asyncio.sleep(2)
         else:
             self.logger("[SEARCH] Nenhum botão 'Participar' encontrado ou clicável nesta página.")
+
+    async def handle_group_questions(self):
+        """Lida automaticamente com questionários de entrada em grupos (regras, radios, texto)."""
+        try:
+            await asyncio.sleep(4) # Espera a página de perguntas/modal carregar
+            
+            content = await self.page.content()
+            # Palavras-chave típicas dessas telas
+            if "Responder a perguntas" in content or "Regras" in content or "Enviar" in content:
+                self.logger("[JOIN] Questionário de aprovação detectado. Preenchendo as respostas...")
+                
+                respostas = ["Sim", "Concordo", "Estou ciente", "Quero participar", "Ok"]
+                
+                # 1. Preencher Caixas de Texto (textareas / inputs)
+                textareas = await self.page.locator("textarea, input[type='text']").element_handles()
+                for ta in textareas:
+                    if await ta.is_visible():
+                        await human_click(self.page, ta)
+                        await asyncio.sleep(0.5)
+                        await self.page.keyboard.type(random.choice(respostas), delay=50)
+                        await asyncio.sleep(0.5)
+                        
+                # 2. Marcar Checkboxes (Normalmente concordando com regras)
+                checkboxes = await self.page.locator("input[type='checkbox'], [role='checkbox']").element_handles()
+                for cb in checkboxes:
+                    if await cb.is_visible():
+                        await human_click(self.page, cb)
+                        await asyncio.sleep(0.5)
+                        
+                # 3. Selecionar o primeiro Radio Button de cada pergunta via JS nativo (bypass React)
+                await self.page.evaluate('''() => {
+                    let radios = Array.from(document.querySelectorAll("input[type='radio']"));
+                    let names = new Set(radios.map(r => r.name).filter(n => n));
+                    names.forEach(name => {
+                        let first = document.querySelector(`input[type="radio"][name="${name}"]`);
+                        if (first && !first.checked) first.click();
+                    });
+                    
+                    let roleRadios = document.querySelectorAll('[role="radio"]');
+                    if(roleRadios.length > 0) {
+                        try { roleRadios[0].click(); } catch(e) {}
+                    }
+                }''')
+                await asyncio.sleep(1.5)
+                
+                # 4. Clicar no botão Enviar
+                enviar_btns = await self.page.locator("text=/Enviar/i").element_handles()
+                for btn in enviar_btns:
+                    if await btn.is_visible():
+                        await human_click(self.page, btn)
+                        self.logger("[JOIN] Respostas enviadas aos administradores do grupo!")
+                        await asyncio.sleep(4)
+                        return
+                        
+                # 5. Fallback Javascript se o botão Enviar estiver escondido por divs
+                enviou = await self.page.evaluate('''() => {
+                    let btns = Array.from(document.querySelectorAll('button, [role="button"], div[role="button"]'));
+                    let enviar = btns.find(b => b.innerText && b.innerText.toLowerCase().includes('enviar'));
+                    if (enviar) { enviar.click(); return true; }
+                    return false;
+                }''')
+                
+                if enviou:
+                    self.logger("[JOIN] Respostas enviadas com sucesso via Injeção Javascript.")
+                    await asyncio.sleep(4)
+                else:
+                    self.logger("[WARNING] Botão 'Enviar' não encontrado. Talvez o formulário já tenha sido submetido.")
+                    
+        except Exception as e:
+            self.logger(f"[ERROR] Falha ao tentar responder perguntas do grupo: {e}")
 
     async def post_to_group(self, group_url):
         self.logger(f"[POST] Acessando: {group_url}")
