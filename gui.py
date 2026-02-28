@@ -54,7 +54,7 @@ class BotGUI(ctk.CTk):
 
         # Sliders
         self.create_slider("Frequência de Postagem (minutos)", 5, 60, 15)
-        self.create_slider("Frequência de Busca de Grupos (minutos)", 10, 120, 30)
+        self.create_slider("Frequência de Busca de Grupos (minutos)", 1, 120, 2)
         self.create_slider("Taxa de Erro Humano (%)", 0, 20, 5)
         self.create_slider("Tempo Total de Execução (horas)", 1, 24, 4)
 
@@ -113,8 +113,8 @@ class BotGUI(ctk.CTk):
         self.freq_var.set(20)
         self.freq_label.configure(text="20")
         
-        self.search_freq_var.set(45)
-        self.search_freq_label.configure(text="45")
+        self.search_freq_var.set(5)
+        self.search_freq_label.configure(text="5")
         
         self.error_var.set(8)
         self.error_label.configure(text="8")
