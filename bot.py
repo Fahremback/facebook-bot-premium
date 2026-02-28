@@ -124,6 +124,21 @@ class FacebookBot:
         await self.page.goto(f"https://mbasic.facebook.com/search/groups/?q={safe_keyword}")
         await asyncio.sleep(4) # Wait for results to load fully
         
+        # Fallback: If Facebook forces the modern React overlay, it traps us on an empty search page
+        search_input = await self.page.query_selector("input[type='search'], input[placeholder*='Pesquisar']")
+        if search_input and await search_input.is_visible():
+            self.logger("[SEARCH] Interface de busca moderna detectada. Inserindo texto manualmente...")
+            await human_click(self.page, search_input)
+            await human_type(self.page, "input[type='search'], input[placeholder*='Pesquisar']", keyword)
+            await self.page.keyboard.press("Enter")
+            await asyncio.sleep(5) # Wait for the actual query to execute
+            
+            # Optionally, we might need to click on the 'Grupos' tab if it exists
+            group_tab = await self.page.query_selector("text=/Grupos/i")
+            if group_tab and await group_tab.is_visible():
+                await human_click(self.page, group_tab)
+                await asyncio.sleep(3)
+        
         # Find all elements that contain "participar" (case insensitive)
         join_btns = await self.page.locator("text=/participar/i").element_handles()
         
