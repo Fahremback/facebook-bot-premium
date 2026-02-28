@@ -152,10 +152,10 @@ class FacebookBot:
                     self.logger(f"[SEARCH] Aviso ao tentar mudar para a aba Grupos: Ignorado (Timeout).")
                 await asyncio.sleep(3)
         
-        self.logger("[SEARCH] Mapeando coordenadas visuais (X-Ray OCR) da palavra 'Participar'...")
+        self.logger("[SEARCH] Buscando botões 'Participar' via injeção profunda de script...")
         
-        # Mapping text directly to physical screen pixels bypassing React UI logic
-        clicked_coord = await self.page.evaluate('''async () => {
+        # Inject script to find the text and click its closest clickable container
+        clicked_success = await self.page.evaluate('''async () => {
             const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
             let nodes = [];
             let node;
@@ -165,56 +165,32 @@ class FacebookBot:
                 }
             }
             if (nodes.length > 0) {
-                // Find first visible bounding box
                 for (let n of nodes) {
-                    let range = document.createRange();
-                    range.selectNodeContents(n);
-                    let rects = range.getClientRects();
-                    if (rects.length > 0 && rects[0].width > 0 && rects[0].height > 0) {
+                    let parent = n.parentElement;
+                    // Try to find the closest button or actionable div
+                    let clickable = parent.closest('button, a, [role="button"]') || parent;
+                    
+                    // Check if it's visible (basic check)
+                    let style = window.getComputedStyle(clickable);
+                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                        clickable.scrollIntoView({block: 'center', behavior: 'instant'});
                         return new Promise((resolve) => {
-                            n.parentElement.scrollIntoView({block: 'center', behavior: 'instant'});
                             setTimeout(() => {
-                                let rects2 = range.getClientRects();
-                                if (rects2.length > 0) {
-                                    resolve({
-                                        x: rects2[0].left + rects2[0].width / 2,
-                                        y: rects2[0].top + rects2[0].height / 2
-                                    });
-                                } else {
-                                    resolve(null);
-                                }
-                            }, 500); // give time for scroll 
+                                clickable.click();
+                                resolve(true);
+                            }, 500);
                         });
                     }
                 }
             }
-            return null;
+            return false;
         }''')
         
-        if clicked_coord:
-            try:
-                x, y = clicked_coord['x'], clicked_coord['y']
-                self.logger(f"[SEARCH] Coordenadas adquiridas: X={int(x)} Y={int(y)}. Movendo mouse...")
-                
-                # Move slightly offset from center for realism
-                target_x = x + random.uniform(-5, 5)
-                target_y = y + random.uniform(-2, 2)
-                
-                await self.page.mouse.move(target_x, target_y, steps=15)
-                await asyncio.sleep(random.uniform(0.2, 0.6))
-                
-                # Raw physical click, no DOM target restrictions. Hold the click down longer!
-                await self.page.mouse.down()
-                click_duration = random.uniform(0.15, 0.4) # Firm human touch/click duration
-                await asyncio.sleep(click_duration)
-                await self.page.mouse.up()
-                
-                self.logger(f"[JOIN] Solicitado entrada no grupo (Clique Firme de {int(click_duration*1000)}ms).")
-                await asyncio.sleep(5)
-            except Exception as e:
-                self.logger(f"[ERROR] Falha no clique visual: {e}")
+        if clicked_success:
+            self.logger("[JOIN] Solicitado entrada no grupo (Clique Injetado via Javascript).")
+            await asyncio.sleep(5)
         else:
-            self.logger("[SEARCH] Nenhuma palavra 'Participar' detectada visualmente na tela.")
+            self.logger("[SEARCH] Nenhum botão 'Participar' encontrado ou clicável nesta página.")
 
     async def post_to_group(self, group_url):
         self.logger(f"[POST] Acessando: {group_url}")
