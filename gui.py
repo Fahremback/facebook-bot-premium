@@ -3,7 +3,7 @@ import asyncio
 import threading
 import os
 from bot import FacebookBot
-from persistence import save_settings, load_settings
+from persistence import save_settings, load_settings, load_history
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -36,6 +36,10 @@ class BotGUI(ctk.CTk):
         ctk.CTkLabel(self.sidebar, text="Busca de Grupos", font=("Inter", 16, "bold")).pack(pady=10)
         self.keyword_entry = ctk.CTkEntry(self.sidebar, placeholder_text="Marketing; Vendas; Empregos")
         self.keyword_entry.pack(fill="x", padx=20, pady=5)
+        
+        self.search_new_groups_var = ctk.BooleanVar(value=True)
+        self.checkbox_search = ctk.CTkCheckBox(self.sidebar, text="Buscar Novos Grupos", variable=self.search_new_groups_var)
+        self.checkbox_search.pack(pady=10, padx=20, anchor="w")
 
         ctk.CTkLabel(self.sidebar, text="Conteúdo da Postagem", font=("Inter", 16, "bold")).pack(pady=10)
         self.text_area = ctk.CTkTextbox(self.sidebar, height=100)
@@ -130,6 +134,7 @@ class BotGUI(ctk.CTk):
             if "login" in data: self.login_entry.insert(0, data["login"])
             if "password" in data: self.pass_entry.insert(0, data["password"])
             if "group_keyword" in data: self.keyword_entry.insert(0, data["group_keyword"])
+            if "search_new_groups" in data: self.search_new_groups_var.set(data["search_new_groups"])
             if "post_text" in data: self.text_area.insert("1.0", data["post_text"])
             if "image_path" in data:
                 self.image_path = data["image_path"]
@@ -157,6 +162,7 @@ class BotGUI(ctk.CTk):
             "login": self.login_entry.get(),
             "password": self.pass_entry.get(),
             "group_keyword": self.keyword_entry.get(),
+            "search_new_groups": self.search_new_groups_var.get(),
             "post_text": self.text_area.get("1.0", "end-1c"),
             "image_path": self.image_path,
             "frequency": self.freq_var.get() * 60,

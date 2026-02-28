@@ -4,6 +4,7 @@ import random
 from playwright.async_api import async_playwright
 import config
 from utils import human_type, random_sleep, scramble_image, clean_temp_images, human_click, simulate_error
+from persistence import load_history, save_history
 
 class FacebookBot:
     def __init__(self, settings=None, logger=None):
@@ -337,10 +338,9 @@ class FacebookBot:
                 # 0. Noise interaction (every cycle)
                 await self.behavioral_noise()
                 
-                # 1. Search/Join (Independent timer)
+                # 1. Search/Join (Independent timer) - Somente se a caixa "Buscar Novos Grupos" estiver marcada
                 search_interval = self.settings.get("search_frequency", 1800)
-                if self.settings.get("group_keyword") and (now - last_search_time >= search_interval):
-                    # Simulate human error: occasionally skip search or wait longer
+                if self.settings.get("search_new_groups", True) and self.settings.get("group_keyword") and (now - last_search_time >= search_interval):
                     if not simulate_error(self.settings.get("error_rate", 5)):
                         await self.search_and_join_groups()
                         last_search_time = now
@@ -352,17 +352,50 @@ class FacebookBot:
                 post_interval = self.settings.get("frequency", 900)
                 if (self.settings.get("post_text") or self.settings.get("image_path")) and (now - last_post_time >= post_interval):
                     if not simulate_error(self.settings.get("error_rate", 5)):
-                        self.logger("[MAIN] Ciclo de postagem iniciado.")
+                        self.logger("[MAIN] Ciclo de postagem iniciado. Verificando Meus Grupos...")
                         await self.page.goto("https://mbasic.facebook.com/groups/?category=membership")
+                        
                         group_links = await self.page.query_selector_all("a[href*='/groups/']")
-                        urls = [await g.get_attribute("href") for g in group_links if "/groups/" in await g.get_attribute("href")]
-                        clean_urls = list(set([f"https://mbasic.facebook.com{u.split('?')[0]}" for u in urls if u.startswith("/")]))
+                        
+                        raw_keywords = self.settings.get("group_keyword", "").lower()
+                        keywords = [k.strip() for k in raw_keywords.split(';') if k.strip()]
+                        
+                        history = load_history()
+                        current_timestamp = time.time()
+                        
+                        valid_groups = []
+                        for g in group_links:
+                            url = await g.get_attribute("href")
+                            if "/groups/" not in url or not url.startswith("/"): continue
+                            
+                            group_name = await g.inner_text()
+                            group_name = group_name.lower()
+                            clean_url = f"https://mbasic.facebook.com{url.split('?')[0]}"
+                            
+                            # Filtro: O grupo deve conter ao menos UMA das palavras-chave
+                            if keywords and not any(kw in group_name for kw in keywords):
+                                continue
+                                
+                            # Filtro: Memória de 24 horas (86400 segundos)
+                            last_posted = history.get(clean_url, 0)
+                            if (current_timestamp - last_posted) < 86400:
+                                continue
+                                
+                            valid_groups.append(clean_url)
+                        
+                        clean_urls = list(set(valid_groups))
                         
                         if clean_urls:
-                            await self.post_to_group(random.choice(clean_urls))
+                            target_group = random.choice(clean_urls)
+                            await self.post_to_group(target_group)
+                            
+                            # Salva na memória que acabou de postar neste grupo
+                            history[target_group] = time.time()
+                            save_history(history)
+                            
                             last_post_time = now
                         else:
-                            self.logger("[WARNING] Nenhum grupo encontrado para postar.")
+                            self.logger("[WARNING] Nenhum grupo disponível para postar (Nome incompatível ou em resfriamento 24h).")
                     else:
                         self.logger("[NOISE] 'Erro humano' simulado: pulando postagem desta vez.")
                         last_post_time = now - (post_interval / 2)
