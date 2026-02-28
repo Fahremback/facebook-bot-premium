@@ -69,5 +69,5 @@ Este software foi desenvolvido exclusivamente para fins de Produtividade, Automa
 ---
 
 <p align="center">
-  Desenvolvido com ❤️ por <b>Antigravity AI</b> e focado em Stealth Automation.
+  Desenvolvido com ❤️ por <b>Antigravity AI</b> (Código e Stealth) e por <b>Você</b> (Engenharia Social e Idealização).
 </p>
