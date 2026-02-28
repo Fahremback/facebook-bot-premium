@@ -187,8 +187,18 @@ class FacebookBot:
         }''')
         
         if clicked_success:
-            self.logger("[JOIN] Solicitado entrada no grupo (Clique Injetado via Javascript).")
-            await asyncio.sleep(5)
+            self.logger("[JOIN] Solicitado entrada no grupo / Acesso. Simulando ansiedade humana...")
+            # Ansiedade humana: rolar a tela rápido pra cima e pra baixo logo após clicar
+            for _ in range(random.randint(2, 4)):
+                await self.page.mouse.wheel(0, random.randint(400, 900))
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+                await self.page.mouse.wheel(0, random.randint(-500, -200))
+                await asyncio.sleep(random.uniform(0.3, 0.8))
+                
+            self.logger("[SISTEMA] Fuga tática: voltando ao feed principal para continuar navegando.")
+            # Força o navegador a ir para a home rolar o feed, imitando quem perde o interesse após a ação
+            await self.page.goto("https://mbasic.facebook.com")
+            await asyncio.sleep(2)
         else:
             self.logger("[SEARCH] Nenhum botão 'Participar' encontrado ou clicável nesta página.")
 
@@ -268,10 +278,13 @@ class FacebookBot:
                         self.logger("[NOISE] 'Erro humano' simulado: pulando postagem desta vez.")
                         last_post_time = now - (post_interval / 2)
 
-                # Wait 60s before checking timers again
-                for _ in range(60):
+                # Wait 60s before checking timers again, with human idle scrolling
+                for i in range(60):
                     if not self.is_running: break
                     await asyncio.sleep(1)
+                    # Uma pessoa real nunca deixa o mouse 100% parado por muito tempo
+                    if i % 15 == 0 and random.random() > 0.5:
+                        await self.page.mouse.wheel(0, random.randint(200, 600))
                     
         except Exception as e:
             self.logger(f"[ERROR] {e}")
