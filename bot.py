@@ -48,17 +48,20 @@ class FacebookBot:
         await client.send('Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
         await client.send('Emulation.setEmitTouchEventsForMouse', {'enabled': True})
         
-        # Intercept and block redirects to m.facebook.com, forcing mbasic (Only for main page loads)
+        # Intercept and block redirects to m.facebook.com or www.facebook.com, forcing mbasic
         async def handle_route(route):
             url = route.request.url
-            if route.request.resource_type in ["document", "navigation"] and "m.facebook.com" in url and "mbasic" not in url:
-                new_url = url.replace("m.facebook.com", "mbasic.facebook.com")
-                self.logger(f"[REDE] Redirecionamento bloqueado. Forçando mbasic.")
-                await route.continue_(url=new_url)
+            if route.request.resource_type in ["document", "navigation"]:
+                if "facebook.com" in url and "mbasic" not in url:
+                    new_url = url.replace("m.facebook.com", "mbasic.facebook.com").replace("www.facebook.com", "mbasic.facebook.com")
+                    self.logger(f"[REDE] Redirecionamento bloqueado. Forçando mbasic.")
+                    await route.continue_(url=new_url)
+                else:
+                    await route.continue_()
             else:
                 await route.continue_()
                 
-        await self.page.route("**/*", handle_route)
+        await self.page.route("**/*facebook.com**", handle_route)
         
         # Navigate to the initial mbasic page explicitly
         await self.page.goto("https://mbasic.facebook.com")
@@ -110,20 +113,30 @@ class FacebookBot:
                 await asyncio.sleep(random.uniform(2, 4))
 
     async def search_and_join_groups(self):
+        import urllib.parse
         keyword = self.settings.get("group_keyword", "")
         if not keyword: return
+        
+        safe_keyword = urllib.parse.quote_plus(keyword)
         self.logger(f"[SEARCH] Procurando: {keyword}")
-        await self.page.goto(f"https://mbasic.facebook.com/search/groups/?q={keyword}")
-        await asyncio.sleep(2) # Wait for results to load
         
-        # In mbasic, it can be an 'a', 'input', or other elements.
-        join_btn = await self.page.query_selector("xpath=//*[contains(translate(text(), 'PARTICIPAR', 'participar'), 'participar') or contains(translate(@value, 'PARTICIPAR', 'participar'), 'participar')]")
+        # Navigate using the safe URL encoded keyword
+        await self.page.goto(f"https://mbasic.facebook.com/search/groups/?q={safe_keyword}")
+        await asyncio.sleep(4) # Wait for results to load fully
         
-        if join_btn:
-            await human_click(self.page, join_btn)
-            self.logger("[JOIN] Solicitado entrada no grupo.")
-            await asyncio.sleep(5)
-        else:
+        # Find all elements that contain "participar" (case insensitive)
+        join_btns = await self.page.locator("text=/participar/i").element_handles()
+        
+        clicked = False
+        for btn in join_btns:
+            if await btn.is_visible():
+                await human_click(self.page, btn)
+                self.logger("[JOIN] Solicitado entrada no grupo.")
+                clicked = True
+                await asyncio.sleep(5)
+                break
+                
+        if not clicked:
             self.logger("[SEARCH] Nenhum botão 'Participar' encontrado nesta página.")
 
     async def post_to_group(self, group_url):
