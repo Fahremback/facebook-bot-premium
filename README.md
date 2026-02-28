@@ -42,7 +42,7 @@ playwright install chromium
 
 ### 2. Configuração do Navegador
 O bot utiliza o navegador **Comet**. Importante:
-1. O executável deve estar em: `C:\Users\fahre\AppData\Local\Perplexity\Comet\Application\comet.exe`.
+1. O executável deve estar na pasta padrão: `%LOCALAPPDATA%\Perplexity\Comet\Application\comet.exe`.
 2. O bot usará seu perfil real da Perplexity/Comet.
 3. **Feche o Comet** antes de iniciar o bot para evitar conflitos de perfil.
 

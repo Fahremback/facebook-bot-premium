@@ -25,7 +25,7 @@ NOISE_DELAY_RANGE = (60, 180)   # 1 to 3 minutes of noise/scrolling
 
 # Browser settings
 # Using the Comet browser (Perplexity) as requested
-COMET_EXE_PATH = r"C:\Users\fahre\AppData\Local\Perplexity\Comet\Application\comet.exe"
+COMET_EXE_PATH = os.path.join(os.environ['LOCALAPPDATA'], r"Perplexity\Comet\Application\comet.exe")
 USER_DATA_DIR = os.path.join(os.environ['LOCALAPPDATA'], r"Perplexity\Comet\User Data")
 PROFILE_DIRECTORY = "Default"
 
