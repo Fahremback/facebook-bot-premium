@@ -48,12 +48,12 @@ class FacebookBot:
         await client.send('Emulation.setTouchEmulationEnabled', {'enabled': True, 'maxTouchPoints': 5})
         await client.send('Emulation.setEmitTouchEventsForMouse', {'enabled': True})
         
-        # Intercept and block redirects to m.facebook.com, forcing mbasic
+        # Intercept and block redirects to m.facebook.com, forcing mbasic (Only for main page loads)
         async def handle_route(route):
             url = route.request.url
-            if "m.facebook.com" in url and "mbasic" not in url:
+            if route.request.resource_type in ["document", "navigation"] and "m.facebook.com" in url and "mbasic" not in url:
                 new_url = url.replace("m.facebook.com", "mbasic.facebook.com")
-                self.logger(f"[REDE] Redirecionamento bloqueado. Forçando mbasic: {new_url}")
+                self.logger(f"[REDE] Redirecionamento bloqueado. Forçando mbasic.")
                 await route.continue_(url=new_url)
             else:
                 await route.continue_()
@@ -114,11 +114,17 @@ class FacebookBot:
         if not keyword: return
         self.logger(f"[SEARCH] Procurando: {keyword}")
         await self.page.goto(f"https://mbasic.facebook.com/search/groups/?q={keyword}")
-        join_btn = await self.page.query_selector("button:has-text('Participar')")
+        await asyncio.sleep(2) # Wait for results to load
+        
+        # In mbasic, it can be an 'a', 'input', or other elements.
+        join_btn = await self.page.query_selector("xpath=//*[contains(translate(text(), 'PARTICIPAR', 'participar'), 'participar') or contains(translate(@value, 'PARTICIPAR', 'participar'), 'participar')]")
+        
         if join_btn:
             await human_click(self.page, join_btn)
-            self.logger("[JOIN] Solicitado.")
+            self.logger("[JOIN] Solicitado entrada no grupo.")
             await asyncio.sleep(5)
+        else:
+            self.logger("[SEARCH] Nenhum botão 'Participar' encontrado nesta página.")
 
     async def post_to_group(self, group_url):
         self.logger(f"[POST] Acessando: {group_url}")
