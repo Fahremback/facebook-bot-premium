@@ -152,8 +152,9 @@ class FacebookBot:
                     self.logger(f"[SEARCH] Aviso ao tentar mudar para a aba Grupos: Ignorado (Timeout).")
                 await asyncio.sleep(3)
         
-        # Find all elements that contain "participar" (case insensitive)
-        join_btns = await self.page.locator("text=/participar/i").element_handles()
+        # Find "Participar" buttons (get_by_text finds the innermost elements precisely)
+        import re
+        join_btns = await self.page.get_by_text(re.compile(r"Participar", re.IGNORECASE)).element_handles()
         
         clicked = False
         for btn in join_btns:
