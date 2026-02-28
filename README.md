@@ -13,18 +13,19 @@ Uma solução de automação para Facebook de **baixa detecção**, focada em mi
 *   **📱 Emulação Mobile Real:** Simula um iPhone 13 com suporte a toque e viewport vertical.
 *   **🖱️ Movimentação Humana:** Cliques com jitter (tremor) e movimentação de mouse não linear.
 *   **⌨️ Digitação Realista:** Digitação caractere por caractere com atrasos variáveis e pausas de "pensamento".
-*   **🎭 Ruído Comportamental:** Rola o feed e curte posts aleatoriamente para "aquecer" a sessão.
+*   **🔄 Timers Independentes:** Frequências separadas para entrar em grupos e para fazer postagens.
+*   **🎭 Ruído Comportamental & Taxa de Erro:** Sistema de "erro humano" que pula ações ocasionalmente para parecer um usuário real distraído.
 *   **🖼️ Proteção Anti-Hash:** Altera metadados e pixels das imagens automaticamente antes de cada postagem.
-*   **💾 Persistência de Dados:** Salva e carrega suas configurações automaticamente.
-*   **🖥️ Interface Moderna:** Controle total via GUI intuitiva (Dark Mode).
+*   **💾 Persistência de Dados:** Salva e carrega suas configurações automaticamente em `settings.json`.
+*   **🖥️ Interface Moderna:** Controle total via GUI intuitiva (Dark Mode) com labels dinâmicos.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Playwright:** Automação de navegador de última geração.
-- **CustomTkinter:** Interface gráfica moderna e responsiva.
-- **Pillow:** Processamento inteligente de imagens.
+- **Playwright:** Automação de navegador de última geração com suporte a dispositivos móveis.
+- **CustomTkinter:** Interface gráfica moderna, estilosa e responsiva.
+- **Pillow:** Processamento inteligente de imagens para evitar detecção de conteúdo repetitivo.
 - **Comet Browser:** Integração nativa com o navegador AI da Perplexity.
 
 ---
@@ -40,10 +41,10 @@ playwright install chromium
 ```
 
 ### 2. Configuração do Navegador
-O bot utiliza o navegador **Comet**. Certifique-se de:
-1. Ter o Comet instalado.
-2. Estar logado no Facebook dentro do Comet.
-3. **Fechar o Comet** antes de iniciar o bot.
+O bot utiliza o navegador **Comet**. Importante:
+1. O executável deve estar em: `C:\Users\fahre\AppData\Local\Perplexity\Comet\Application\comet.exe`.
+2. O bot usará seu perfil real da Perplexity/Comet.
+3. **Feche o Comet** antes de iniciar o bot para evitar conflitos de perfil.
 
 ### 3. Execução
 Basta rodar o arquivo da interface principal:
@@ -54,13 +55,13 @@ python gui.py
 
 ---
 
-## ⚙️ Configurações Recomendadas
+## ⚙️ Configurações Sugeridas
 
 | Parâmetro | Sugestão Segura | Por que? |
 | :--- | :--- | :--- |
-| **Frequência** | 15-30 min | Evita ser marcado como spam pela Meta. |
-| **Taxa de Erro** | 5-10% | Humanos erram cliques e digitação às vezes. |
-| **Tempo Total** | 4-8 horas | Mimetiza uma jornada de trabalho de um CM. |
+| **Postagem** | 20-40 min | Evita bloqueios por "atividade suspeita". |
+| **Busca de Grupos** | 30-60 min | Entrar em muitos grupos rápido é sinal de bot. |
+| **Taxa de Erro** | 8-12% | Simula um humano que às vezes para de navegar. |
 
 ---
 

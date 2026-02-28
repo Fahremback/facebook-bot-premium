@@ -72,7 +72,15 @@ class FacebookBot:
 
     async def behavioral_noise(self):
         self.logger("[NOISE] Gerando ruído comportamental...")
+        error_rate = self.settings.get("error_rate", 5)
+        
         await self.page.goto("https://mbasic.facebook.com")
+        
+        # Randomly fail to "see" things if error rate is hit
+        if simulate_error(error_rate):
+            self.logger("[NOISE] Human Jitter: Hoje o 'humano' está distraído, navegando menos.")
+            return
+
         for _ in range(random.randint(2, 4)):
             await self.page.mouse.wheel(0, random.randint(300, 700))
             await asyncio.sleep(random.uniform(2, 4))
@@ -127,33 +135,52 @@ class FacebookBot:
 
     async def run_cycle(self):
         if not self.is_running: return
+        
+        last_search_time = 0
+        last_post_time = 0
+        
         try:
-            await self.behavioral_noise()
-            
-            # 1. Search/Join (Configurable via keyword)
-            if self.settings.get("group_keyword") and random.random() > 0.7:
-                await self.search_and_join_groups()
-            
-            # 2. Post (Only if content is provided)
-            if self.settings.get("post_text") or self.settings.get("image_path"):
-                self.logger("[MAIN] Conteúdo de postagem detectado. Iniciando ciclo de postagem.")
-                await self.page.goto("https://mbasic.facebook.com/groups/?category=membership")
-                group_links = await self.page.query_selector_all("a[href*='/groups/']")
-                urls = [await g.get_attribute("href") for g in group_links if "/groups/" in await g.get_attribute("href")]
-                clean_urls = list(set([f"https://mbasic.facebook.com{u.split('?')[0]}" for u in urls if u.startswith("/")]))
+            while self.is_running:
+                now = asyncio.get_event_loop().time()
                 
-                if clean_urls:
-                    await self.post_to_group(random.choice(clean_urls))
-                else:
-                    self.logger("[WARNING] Nenhum grupo encontrado para postar.")
-            else:
-                self.logger("[INFO] Nenhum texto ou imagem definido. Ciclo de postagem pulado.")
-            
-            delay = self.settings.get("frequency", 900)
-            self.logger(f"[MAIN] Ciclo concluído. Próximo em {delay}s.")
-            for _ in range(delay):
-                if not self.is_running: break
-                await asyncio.sleep(1)
+                # 0. Noise interaction (every cycle)
+                await self.behavioral_noise()
+                
+                # 1. Search/Join (Independent timer)
+                search_interval = self.settings.get("search_frequency", 1800)
+                if self.settings.get("group_keyword") and (now - last_search_time >= search_interval):
+                    # Simulate human error: occasionally skip search or wait longer
+                    if not simulate_error(self.settings.get("error_rate", 5)):
+                        await self.search_and_join_groups()
+                        last_search_time = now
+                    else:
+                        self.logger("[NOISE] 'Erro humano' simulado: pulando busca desta vez para parecer mais natural.")
+                        last_search_time = now - (search_interval / 2) # Retry sooner
+
+                # 2. Post (Independent timer)
+                post_interval = self.settings.get("frequency", 900)
+                if (self.settings.get("post_text") or self.settings.get("image_path")) and (now - last_post_time >= post_interval):
+                    if not simulate_error(self.settings.get("error_rate", 5)):
+                        self.logger("[MAIN] Ciclo de postagem iniciado.")
+                        await self.page.goto("https://mbasic.facebook.com/groups/?category=membership")
+                        group_links = await self.page.query_selector_all("a[href*='/groups/']")
+                        urls = [await g.get_attribute("href") for g in group_links if "/groups/" in await g.get_attribute("href")]
+                        clean_urls = list(set([f"https://mbasic.facebook.com{u.split('?')[0]}" for u in urls if u.startswith("/")]))
+                        
+                        if clean_urls:
+                            await self.post_to_group(random.choice(clean_urls))
+                            last_post_time = now
+                        else:
+                            self.logger("[WARNING] Nenhum grupo encontrado para postar.")
+                    else:
+                        self.logger("[NOISE] 'Erro humano' simulado: pulando postagem desta vez.")
+                        last_post_time = now - (post_interval / 2)
+
+                # Wait 60s before checking timers again
+                for _ in range(60):
+                    if not self.is_running: break
+                    await asyncio.sleep(1)
+                    
         except Exception as e:
             self.logger(f"[ERROR] {e}")
 

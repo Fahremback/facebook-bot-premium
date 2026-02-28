@@ -54,6 +54,7 @@ class BotGUI(ctk.CTk):
 
         # Sliders
         self.create_slider("Frequência de Postagem (minutos)", 5, 60, 15)
+        self.create_slider("Frequência de Busca de Grupos (minutos)", 10, 120, 30)
         self.create_slider("Taxa de Erro Humano (%)", 0, 20, 5)
         self.create_slider("Tempo Total de Execução (horas)", 1, 24, 4)
 
@@ -92,6 +93,9 @@ class BotGUI(ctk.CTk):
         if "Postagem" in label: 
             self.freq_var = var
             self.freq_label = value_label
+        elif "Busca" in label:
+            self.search_freq_var = var
+            self.search_freq_label = value_label
         elif "Erro" in label: 
             self.error_var = var
             self.error_label = value_label
@@ -108,10 +112,16 @@ class BotGUI(ctk.CTk):
     def set_safe_config(self):
         self.freq_var.set(20)
         self.freq_label.configure(text="20")
+        
+        self.search_freq_var.set(45)
+        self.search_freq_label.configure(text="45")
+        
         self.error_var.set(8)
         self.error_label.configure(text="8")
+        
         self.duration_var.set(6)
         self.duration_label.configure(text="6")
+        
         self.log("Configurações seguras aplicadas!")
 
     def load_persisted_settings(self):
@@ -128,6 +138,10 @@ class BotGUI(ctk.CTk):
                 val = data["frequency"] // 60
                 self.freq_var.set(val)
                 self.freq_label.configure(text=str(val))
+            if "search_frequency" in data:
+                val = data["search_frequency"] // 60
+                self.search_freq_var.set(val)
+                self.search_freq_label.configure(text=str(val))
             if "error_rate" in data:
                 val = data["error_rate"]
                 self.error_var.set(val)
@@ -146,6 +160,7 @@ class BotGUI(ctk.CTk):
             "post_text": self.text_area.get("1.0", "end-1c"),
             "image_path": self.image_path,
             "frequency": self.freq_var.get() * 60,
+            "search_frequency": self.search_freq_var.get() * 60,
             "error_rate": self.error_var.get(),
             "duration": self.duration_var.get() * 3600
         }
