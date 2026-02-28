@@ -154,7 +154,7 @@ class FacebookBot:
         
         self.logger("[SEARCH] Buscando botões 'Participar' via injeção profunda de script...")
         
-        # Inject script to find the text and click its closest clickable container
+        # Inject script to find the text and click its closest clickable container via deep React events
         clicked_success = await self.page.evaluate('''async () => {
             const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
             let nodes = [];
@@ -167,18 +167,27 @@ class FacebookBot:
             if (nodes.length > 0) {
                 for (let n of nodes) {
                     let parent = n.parentElement;
-                    // Try to find the closest button or actionable div
                     let clickable = parent.closest('button, a, [role="button"]') || parent;
                     
-                    // Check if it's visible (basic check)
                     let style = window.getComputedStyle(clickable);
-                    if (style.display !== 'none' && style.visibility !== 'hidden') {
+                    let rect = clickable.getBoundingClientRect();
+                    
+                    if (style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0) {
                         clickable.scrollIntoView({block: 'center', behavior: 'instant'});
                         return new Promise((resolve) => {
                             setTimeout(() => {
-                                clickable.click();
+                                // Full React-compatible mouse event sequence
+                                const events = ['pointerdown', 'mousedown', 'click', 'pointerup', 'mouseup'];
+                                events.forEach(evt => {
+                                    clickable.dispatchEvent(new MouseEvent(evt, {
+                                        view: window,
+                                        bubbles: true,
+                                        cancelable: true,
+                                        buttons: 1
+                                    }));
+                                });
                                 resolve(true);
-                            }, 500);
+                            }, 800);
                         });
                     }
                 }
