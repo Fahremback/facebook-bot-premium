@@ -152,21 +152,60 @@ class FacebookBot:
                     self.logger(f"[SEARCH] Aviso ao tentar mudar para a aba Grupos: Ignorado (Timeout).")
                 await asyncio.sleep(3)
         
-        # Find "Participar" buttons (get_by_text finds the innermost elements precisely)
-        import re
-        join_btns = await self.page.get_by_text(re.compile(r"Participar", re.IGNORECASE)).element_handles()
+        self.logger("[SEARCH] Mapeando coordenadas visuais (X-Ray OCR) da palavra 'Participar'...")
         
-        clicked = False
-        for btn in join_btns:
-            if await btn.is_visible():
-                await human_click(self.page, btn)
-                self.logger("[JOIN] Solicitado entrada no grupo.")
-                clicked = True
+        # Mapping text directly to physical screen pixels bypassing React UI logic
+        clicked_coord = await self.page.evaluate('''async () => {
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+            let nodes = [];
+            let node;
+            while(node = walker.nextNode()) {
+                if(node.nodeValue.toLowerCase().trim() === "participar") {
+                    nodes.push(node);
+                }
+            }
+            if (nodes.length > 0) {
+                // Find first visible bounding box
+                for (let n of nodes) {
+                    let range = document.createRange();
+                    range.selectNodeContents(n);
+                    let rects = range.getClientRects();
+                    if (rects.length > 0 && rects[0].width > 0 && rects[0].height > 0) {
+                        return new Promise((resolve) => {
+                            n.parentElement.scrollIntoView({block: 'center', behavior: 'instant'});
+                            setTimeout(() => {
+                                let rects2 = range.getClientRects();
+                                if (rects2.length > 0) {
+                                    resolve({
+                                        x: rects2[0].left + rects2[0].width / 2,
+                                        y: rects2[0].top + rects2[0].height / 2
+                                    });
+                                } else {
+                                    resolve(null);
+                                }
+                            }, 500); // give time for scroll 
+                        });
+                    }
+                }
+            }
+            return null;
+        }''')
+        
+        if clicked_coord:
+            try:
+                x, y = clicked_coord['x'], clicked_coord['y']
+                await self.page.mouse.move(x + random.uniform(-2, 2), y + random.uniform(-2, 2), steps=10)
+                await asyncio.sleep(random.uniform(0.1, 0.4))
+                # Raw physical click, no DOM target restrictions
+                await self.page.mouse.down()
+                await asyncio.sleep(0.05)
+                await self.page.mouse.up()
+                self.logger("[JOIN] Solicitado entrada no grupo (Clique Visual Direto).")
                 await asyncio.sleep(5)
-                break
-                
-        if not clicked:
-            self.logger("[SEARCH] Nenhum botão 'Participar' encontrado nesta página.")
+            except Exception as e:
+                self.logger(f"[ERROR] Falha no clique visual: {e}")
+        else:
+            self.logger("[SEARCH] Nenhuma palavra 'Participar' detectada visualmente na tela.")
 
     async def post_to_group(self, group_url):
         self.logger(f"[POST] Acessando: {group_url}")
