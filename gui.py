@@ -13,7 +13,7 @@ class BotGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Facebook Automation Bot - Premium Edition")
+        self.title("beli")
         self.geometry("1100x800")
         self.minsize(950, 700)
         
@@ -42,7 +42,7 @@ class BotGUI(ctk.CTk):
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         
         # Logo / Título da Sidebar
-        self.logo_label = ctk.CTkLabel(self.sidebar, text="🤖 AutoBot PRO", font=("Inter", 24, "bold"), text_color=self.colors["accent"])
+        self.logo_label = ctk.CTkLabel(self.sidebar, text="🤖 beli", font=("Inter", 24, "bold"), text_color=self.colors["accent"])
         self.logo_label.pack(pady=(20, 30))
 
         # --- CARD 1: Login ---
@@ -112,6 +112,7 @@ class BotGUI(ctk.CTk):
         self.create_slider(self.frame_performance, "Busca de Grupos (minutos)", 1, 120, 2, 0, 1)
         self.create_slider(self.frame_performance, "Taxa de Erro Humano (%)", 0, 20, 5, 1, 0)
         self.create_slider(self.frame_performance, "Tempo Total de Execução (horas)", 1, 24, 4, 1, 1)
+        self.create_slider(self.frame_performance, "Grupos por Busca (Qtd)", 1, 20, 3, 2, 0)
 
         # --- CARD 5: Terminal / Logs ---
         self.frame_log = ctk.CTkFrame(self.main_frame, fg_color=self.colors["bg_card"], corner_radius=10)
@@ -181,9 +182,12 @@ class BotGUI(ctk.CTk):
         if "Postagem" in label_text: 
             self.freq_var = var
             self.freq_label = value_label
-        elif "Busca" in label_text:
+        elif label_text == "Busca de Grupos (minutos)":
             self.search_freq_var = var
             self.search_freq_label = value_label
+        elif label_text == "Grupos por Busca (Qtd)":
+            self.groups_per_search_var = var
+            self.groups_per_search_label = value_label
         elif "Erro" in label_text: 
             self.error_var = var
             self.error_label = value_label
@@ -215,6 +219,9 @@ class BotGUI(ctk.CTk):
         self.duration_var.set(6)
         self.duration_label.configure(text="6")
         
+        self.groups_per_search_var.set(3)
+        self.groups_per_search_label.configure(text="3")
+        
         self.log("[SISTEMA] Configurações de proteção aplicadas com sucesso.")
 
     def load_persisted_settings(self):
@@ -237,6 +244,10 @@ class BotGUI(ctk.CTk):
                 val = data["search_frequency"] // 60
                 self.search_freq_var.set(val)
                 self.search_freq_label.configure(text=str(val))
+            if "groups_per_search" in data:
+                val = data["groups_per_search"]
+                self.groups_per_search_var.set(val)
+                self.groups_per_search_label.configure(text=str(val))
             if "error_rate" in data:
                 val = data["error_rate"]
                 self.error_var.set(val)
@@ -257,6 +268,7 @@ class BotGUI(ctk.CTk):
             "image_path": self.image_path,
             "frequency": self.freq_var.get() * 60,
             "search_frequency": self.search_freq_var.get() * 60,
+            "groups_per_search": self.groups_per_search_var.get(),
             "error_rate": self.error_var.get(),
             "duration": self.duration_var.get() * 3600
         }

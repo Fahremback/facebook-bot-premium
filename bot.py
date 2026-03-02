@@ -123,12 +123,13 @@ class FacebookBot:
         if not keywords: return
         
         keyword = random.choice(keywords)
-        
         safe_keyword = urllib.parse.quote_plus(keyword)
-        self.logger(f"[SEARCH] Procurando: {keyword}")
         
-        # Navigate using the safe URL encoded keyword
-        await self.page.goto(f"https://mbasic.facebook.com/search/groups/?q={safe_keyword}")
+        groups_per_search = self.settings.get("groups_per_search", 1)
+        self.logger(f"[SEARCH] Tag escolhida: '{keyword}'. Entrando em até {groups_per_search} grupo(s) nesta busca...")
+        
+        search_url = f"https://mbasic.facebook.com/search/groups/?q={safe_keyword}"
+        await self.page.goto(search_url)
         await asyncio.sleep(4) # Wait for results to load fully
         
         # Fallback: If Facebook forces the modern React overlay, it traps us on an empty search page
@@ -159,68 +160,88 @@ class FacebookBot:
                     self.logger(f"[SEARCH] Aviso ao tentar mudar para a aba Grupos: Ignorado (Timeout).")
                 await asyncio.sleep(3)
         
-        self.logger("[SEARCH] Buscando botões 'Participar' via injeção profunda de script...")
+        joined_count = 0
+        attempts = 0
+        max_attempts = groups_per_search * 2
         
-        # Inject script to find the text and click its closest clickable container via deep React events
-        clicked_success = await self.page.evaluate('''async () => {
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-            let nodes = [];
-            let node;
-            while(node = walker.nextNode()) {
-                if(node.nodeValue.toLowerCase().trim() === "participar") {
-                    nodes.push(node);
-                }
-            }
-            if (nodes.length > 0) {
-                for (let n of nodes) {
-                    let parent = n.parentElement;
-                    let clickable = parent.closest('button, a, [role="button"]') || parent;
-                    
-                    let style = window.getComputedStyle(clickable);
-                    let rect = clickable.getBoundingClientRect();
-                    
-                    if (style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0) {
-                        clickable.scrollIntoView({block: 'center', behavior: 'smooth'});
-                        return new Promise((resolve) => {
-                            setTimeout(() => {
-                                // Full React-compatible mouse event sequence
-                                const events = ['pointerdown', 'mousedown', 'click', 'pointerup', 'mouseup'];
-                                events.forEach(evt => {
-                                    clickable.dispatchEvent(new MouseEvent(evt, {
-                                        view: window,
-                                        bubbles: true,
-                                        cancelable: true,
-                                        buttons: 1
-                                    }));
-                                });
-                                resolve(true);
-                            }, 1500); // Give 1.5s for the smooth scroll to finish before clicking
-                        });
+        while joined_count < groups_per_search and attempts < max_attempts:
+            attempts += 1
+            if not self.is_running: break
+            
+            # Garante que estamos na página de pesquisa (evita erro caso tenha saído para o form de perguntas no mbasic)
+            if "search/groups" not in self.page.url and "search/top" not in self.page.url:
+                await self.page.goto(search_url)
+                await asyncio.sleep(4)
+                
+            self.logger(f"[SEARCH] Buscando botão 'Participar' ({joined_count+1}/{groups_per_search}) via injeção profunda de script...")
+            
+            # Inject script to find the text and click its closest clickable container via deep React events
+            clicked_success = await self.page.evaluate('''async (skip_count) => {
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+                let nodes = [];
+                let node;
+                while(node = walker.nextNode()) {
+                    if(node.nodeValue.toLowerCase().trim() === "participar") {
+                        let parent = node.parentElement;
+                        let clickable = parent.closest('button, a, [role="button"], input') || parent;
+                        
+                        let style = window.getComputedStyle(clickable);
+                        let rect = clickable.getBoundingClientRect();
+                        
+                        if (style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0) {
+                            nodes.push(clickable);
+                        }
                     }
                 }
-            }
-            return false;
-        }''')
-        
-        if clicked_success:
-            self.logger("[JOIN] Solicitado entrada no grupo / Acesso. Simulando ansiedade humana...")
-            
-            # Chama o preenchimento de formulário caso o grupo exija aprovação por perguntas
-            await self.handle_group_questions()
-            
-            # Ansiedade humana: rolar a tela rápido pra cima e pra baixo logo após clicar
-            for _ in range(random.randint(2, 4)):
-                await self.page.mouse.wheel(0, random.randint(400, 900))
-                await asyncio.sleep(random.uniform(0.5, 1.5))
-                await self.page.mouse.wheel(0, random.randint(-500, -200))
-                await asyncio.sleep(random.uniform(0.3, 0.8))
                 
-            self.logger("[SISTEMA] Fuga tática: voltando ao feed principal para continuar navegando.")
-            # Força o navegador a ir para a home rolar o feed, imitando quem perde o interesse após a ação
-            await self.page.goto("https://mbasic.facebook.com")
-            await asyncio.sleep(2)
-        else:
-            self.logger("[SEARCH] Nenhum botão 'Participar' encontrado ou clicável nesta página.")
+                // Removendo duplicatas da referência nativa para cliques em elementos iguais capturados em múltiplos nós de texto
+                nodes = [...new Set(nodes)];
+                
+                if (nodes.length > skip_count) {
+                    let clickable = nodes[skip_count];
+                    clickable.scrollIntoView({block: 'center', behavior: 'smooth'});
+                    return new Promise((resolve) => {
+                        setTimeout(() => {
+                            // Full React-compatible mouse event sequence
+                            const events = ['pointerdown', 'mousedown', 'click', 'pointerup', 'mouseup'];
+                            events.forEach(evt => {
+                                clickable.dispatchEvent(new MouseEvent(evt, {
+                                    view: window,
+                                    bubbles: true,
+                                    cancelable: true,
+                                    buttons: 1
+                                }));
+                            });
+                            resolve(true);
+                        }, 1500); // Give 1.5s for the smooth scroll to finish before clicking
+                    });
+                }
+                return false;
+            }''', joined_count)
+            
+            if clicked_success:
+                self.logger(f"[JOIN] Solicitado entrada no grupo {joined_count+1}. Simulando ansiedade humana...")
+                
+                # Chama o preenchimento de formulário caso o grupo exija aprovação por perguntas
+                await self.handle_group_questions()
+                
+                # Ansiedade humana: rolar a tela rápido pra cima e pra baixo logo após clicar
+                for _ in range(random.randint(2, 4)):
+                    await self.page.mouse.wheel(0, random.randint(400, 900))
+                    await asyncio.sleep(random.uniform(0.5, 1.5))
+                    await self.page.mouse.wheel(0, random.randint(-500, -200))
+                    await asyncio.sleep(random.uniform(0.3, 0.8))
+                    
+                joined_count += 1
+                self.logger(f"[SISTEMA] Sucesso: Entrada processada para {joined_count} de {groups_per_search} grupos nesta tag.")
+            else:
+                self.logger("[SEARCH] Mais nenhum botão 'Participar' encontrado ou clicável nesta página.")
+                break
+                
+        self.logger("[SISTEMA] Fuga tática: fechando ciclo de busca para a tag, voltando ao feed.")
+        # Força o navegador a ir para a home rolar o feed, imitando quem perde o interesse após a ação
+        await self.page.goto("https://mbasic.facebook.com")
+        await asyncio.sleep(2)
 
     async def handle_group_questions(self):
         """Lida automaticamente com questionários de entrada em grupos (regras, radios, texto)."""
