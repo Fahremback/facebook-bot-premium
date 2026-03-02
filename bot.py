@@ -24,20 +24,26 @@ class FacebookBot:
         # Manual mobile emulation (Stable for Comet)
         user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1"
         
-        self.context = await self.playwright.chromium.launch_persistent_context(
-            user_data_dir=config.USER_DATA_DIR,
-            executable_path=config.COMET_EXE_PATH,
-            headless=False,
-            user_agent=user_agent,
-            viewport={"width": 390, "height": 844},
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--window-size=390,844",
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--app=https://mbasic.facebook.com"
-            ]
-        )
+        try:
+            self.context = await self.playwright.chromium.launch_persistent_context(
+                user_data_dir=config.USER_DATA_DIR,
+                executable_path=config.COMET_EXE_PATH,
+                headless=False,
+                user_agent=user_agent,
+                viewport={"width": 390, "height": 844},
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--window-size=390,844",
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--app=https://mbasic.facebook.com"
+                ]
+            )
+        except Exception as e:
+            if "Target page, context or browser has been closed" in str(e):
+                self.logger("[DICA] Navegador já está em uso. Por favor, FECHE todas as janelas do Comet e tente iniciar o bot novamente.")
+            raise e
+
         
         # When using --app, the first page is automatically our app target
         self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
